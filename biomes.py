@@ -2,6 +2,7 @@ class Biome:
     def __init__(self, name, temperature, humidity, precipitation, colour):
         self.name = name
         self.temperature = temperature
+        self.humidity = humidity
         self.precipitation = precipitation
         self.colour = colour
 

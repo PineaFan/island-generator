@@ -97,7 +97,7 @@ class Island:
         # For each row, create a thread to calculate the nearest neighbour
         threads = []
         for y in range(self.height):
-            thread = threading.Thread(target=self._nearest_neighbour_thread, args=(y,))
+            thread = threading.Thread(target=self._remove_isolated_tiles_thread, args=(y,))
             threads.append(thread)
             thread.start()
         # Wait for all threads to finish
@@ -105,6 +105,32 @@ class Island:
             thread.join()
         self.tiles = self.tempMap
 
+    def _erode_thread(self, y):
+        for x in range(self.width):
+            neighbours = []
+            if not self._is_on_edge(x, y):
+                neighbours.append(self.tiles[y - 1][x])
+                neighbours.append(self.tiles[y + 1][x])
+                neighbours.append(self.tiles[y][x - 1])
+                neighbours.append(self.tiles[y][x + 1])
+            oceans = sum([1 if isinstance(b, biomes.Ocean) else 0 for b in neighbours])
+            if oceans and random.randint(0, (4 - oceans) * 2) == 0:
+                self.tempMap[y][x] = biomes.Ocean()
+            else:
+                self.tempMap[y][x] = self.tiles[y][x]
+
+
+    def erode(self):
+        self.tempMap = [[None for _ in range(self.width)] for _ in range(self.height)]
+        threads = []
+        for y in range(self.height):
+            thread = threading.Thread(target=self._erode_thread, args=(y,))
+            threads.append(thread)
+            thread.start()
+        # Wait for all threads to finish
+        for thread in threads:
+            thread.join()
+        self.tiles = self.tempMap
 
     def render(self):
         img = np.zeros((self.height, self.width, 3), np.uint8)
@@ -132,7 +158,9 @@ def generate_loading_bar(low, high, current):
 island = Island(100, 100)
 
 nearest_neighbour = 15
-remove_isolated_tiles = 20
+remove_isolated_tiles = 10
+erode = 20
+
 for x in range(nearest_neighbour):
     island.nearest_neighbour()
     col = Colours().Yellow if x < nearest_neighbour - 1 else Colours().Green
@@ -140,8 +168,13 @@ for x in range(nearest_neighbour):
 print()
 for x in range(remove_isolated_tiles):
     island.remove_isolated_tiles()
-    col = Colours().Yellow if x < nearest_neighbour - 1 else Colours().Green
+    col = Colours().Yellow if x < remove_isolated_tiles - 1 else Colours().Green
     print(col, "Removing isolated tiles  ", generate_loading_bar(0, 100, ((x + 1)*100)//remove_isolated_tiles), end='\r')
+print()
+for x in range(erode):
+    island.erode()
+    col = Colours().Yellow if x < erode - 1 else Colours().Green
+    print(col, "Eroding                  ", generate_loading_bar(0, 100, ((x + 1)*100)//erode), end='\r')
 print()
 print(Colours().Red, "Rendering", end='\r')
 island.render()
